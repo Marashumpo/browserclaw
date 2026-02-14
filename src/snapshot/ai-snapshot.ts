@@ -22,6 +22,8 @@ export async function snapshotAi(opts: {
     throw new Error('Playwright _snapshotForAI is not available. Upgrade playwright-core to >= 1.50.');
   }
 
+  const sourceUrl = page.url();
+
   const result = await maybe._snapshotForAI({
     timeout: normalizeTimeoutMs(opts.timeoutMs, 5000, 60000),
     track: 'response',
@@ -52,5 +54,10 @@ export async function snapshotAi(opts: {
     refs: built.refs,
     stats: getRoleSnapshotStats(built.snapshot, built.refs),
     untrusted: true,
+    contentMeta: {
+      sourceUrl,
+      contentType: 'browser-snapshot',
+      capturedAt: new Date().toISOString(),
+    },
   };
 }

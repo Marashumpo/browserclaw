@@ -22,6 +22,8 @@ export async function snapshotRole(opts: {
 }): Promise<SnapshotResult> {
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
+
+  const sourceUrl = page.url();
   const frameSelector = opts.frameSelector?.trim() || '';
   const selector = opts.selector?.trim() || '';
   const locator = frameSelector
@@ -49,6 +51,11 @@ export async function snapshotRole(opts: {
     refs: built.refs,
     stats: getRoleSnapshotStats(built.snapshot, built.refs),
     untrusted: true,
+    contentMeta: {
+      sourceUrl,
+      contentType: 'browser-snapshot',
+      capturedAt: new Date().toISOString(),
+    },
   };
 }
 
@@ -75,11 +82,21 @@ export async function snapshotAria(opts: {
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
 
+  const sourceUrl = page.url();
+
   const session = await page.context().newCDPSession(page);
   try {
     await session.send('Accessibility.enable').catch(() => {});
     const res = await session.send('Accessibility.getFullAXTree') as { nodes?: CdpAXNode[] };
-    return { nodes: formatAriaNodes(Array.isArray(res?.nodes) ? res.nodes : [], limit), untrusted: true };
+    return {
+      nodes: formatAriaNodes(Array.isArray(res?.nodes) ? res.nodes : [], limit),
+      untrusted: true,
+      contentMeta: {
+        sourceUrl,
+        contentType: 'browser-aria-tree',
+        capturedAt: new Date().toISOString(),
+      },
+    };
   } finally {
     await session.detach().catch(() => {});
   }

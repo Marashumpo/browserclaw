@@ -6,6 +6,7 @@ import {
   toAIFriendlyError,
   normalizeTimeoutMs,
 } from '../connection.js';
+import { assertSafeOutputPath } from '../security.js';
 import type { DownloadResult } from '../types.js';
 
 export async function downloadViaPlaywright(opts: {
@@ -14,7 +15,10 @@ export async function downloadViaPlaywright(opts: {
   ref: string;
   path: string;
   timeoutMs?: number;
+  allowedOutputRoots?: string[];
 }): Promise<DownloadResult> {
+  assertSafeOutputPath(opts.path, opts.allowedOutputRoots);
+
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
   restoreRoleRefsForTarget({ cdpUrl: opts.cdpUrl, targetId: opts.targetId, page });
@@ -45,6 +49,7 @@ export async function waitForDownloadViaPlaywright(opts: {
   targetId?: string;
   path?: string;
   timeoutMs?: number;
+  allowedOutputRoots?: string[];
 }): Promise<DownloadResult> {
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
@@ -53,6 +58,7 @@ export async function waitForDownloadViaPlaywright(opts: {
 
   const download = await page.waitForEvent('download', { timeout });
   const savePath = opts.path ?? download.suggestedFilename();
+  assertSafeOutputPath(savePath, opts.allowedOutputRoots);
   await download.saveAs(savePath);
 
   return {

@@ -10,8 +10,8 @@ export type PageWithAI = Page & {
 
 // ── Persistent Connection Cache ──
 
-let cached: { browser: Browser; cdpUrl: string } | null = null;
-const connectingByUrl = new Map<string, Promise<{ browser: Browser; cdpUrl: string }>>();
+let cached: { browser: Browser; cdpUrl: string; authToken?: string } | null = null;
+const connectingByUrl = new Map<string, Promise<{ browser: Browser; cdpUrl: string; authToken?: string }>>();
 
 const pageStates = new WeakMap<Page, PageState>();
 const observedContexts = new WeakSet<BrowserContext>();
@@ -204,7 +204,7 @@ export function restoreRoleRefsForTarget(opts: {
 
 // ── Connect to Browser ──
 
-export async function connectBrowser(cdpUrl: string): Promise<{ browser: Browser; cdpUrl: string }> {
+export async function connectBrowser(cdpUrl: string, authToken?: string): Promise<{ browser: Browser; cdpUrl: string; authToken?: string }> {
   const normalized = normalizeCdpUrl(cdpUrl);
   if (cached?.cdpUrl === normalized) return cached;
 
@@ -216,9 +216,11 @@ export async function connectBrowser(cdpUrl: string): Promise<{ browser: Browser
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const timeout = 5000 + attempt * 2000;
-        const endpoint = await getChromeWebSocketUrl(normalized, timeout).catch(() => null) ?? normalized;
-        const browser = await chromium.connectOverCDP(endpoint, { timeout });
-        const connected = { browser, cdpUrl: normalized };
+        const endpoint = await getChromeWebSocketUrl(normalized, timeout, authToken).catch(() => null) ?? normalized;
+        const headers: Record<string, string> = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        const browser = await chromium.connectOverCDP(endpoint, { timeout, headers });
+        const connected = { browser, cdpUrl: normalized, authToken };
         cached = connected;
         observeBrowser(browser);
         browser.on('disconnected', () => {
@@ -289,7 +291,9 @@ export async function findPageByTargetId(browser: Browser, targetId: string, cdp
   if (cdpUrl) {
     try {
       const listUrl = `${cdpUrl.replace(/\/+$/, '').replace(/^ws:/, 'http:').replace(/\/cdp$/, '')}/json/list`;
-      const response = await fetch(listUrl);
+      const headers: Record<string, string> = {};
+      if (cached?.authToken) headers['Authorization'] = `Bearer ${cached.authToken}`;
+      const response = await fetch(listUrl, { headers });
       if (response.ok) {
         const targets = await response.json() as CdpTarget[];
         const target = targets.find(t => t.id === targetId);

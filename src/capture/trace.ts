@@ -2,6 +2,7 @@ import {
   getPageForTargetId,
   ensurePageState,
 } from '../connection.js';
+import { assertSafeOutputPath } from '../security.js';
 
 export async function traceStartViaPlaywright(opts: {
   cdpUrl: string;
@@ -24,7 +25,9 @@ export async function traceStopViaPlaywright(opts: {
   cdpUrl: string;
   targetId?: string;
   path: string;
+  allowedOutputRoots?: string[];
 }): Promise<void> {
+  assertSafeOutputPath(opts.path, opts.allowedOutputRoots);
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
   const context = page.context();

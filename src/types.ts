@@ -45,6 +45,28 @@ export interface LaunchOptions {
   profileColor?: string;
   /** Additional Chrome command-line arguments (e.g. `['--start-maximized']`). */
   chromeArgs?: string[];
+  /**
+   * Allow navigation to internal/loopback addresses (localhost, 127.x, private IPs).
+   * Default: `false` — internal URLs are blocked to prevent SSRF attacks.
+   * Set to `true` if you need to access local development servers.
+   */
+  allowInternal?: boolean;
+}
+
+/** Options for connecting to an existing browser instance. */
+export interface ConnectOptions {
+  /**
+   * Allow navigation to internal/loopback addresses (localhost, 127.x, private IPs).
+   * Default: `false` — internal URLs are blocked to prevent SSRF attacks.
+   * Set to `true` if you need to access local development servers.
+   */
+  allowInternal?: boolean;
+  /**
+   * Bearer token for authenticating with the CDP endpoint.
+   * Required when connecting to a browser instance that has auth enabled
+   * (e.g. OpenClaw browser control with gateway.auth.token).
+   */
+  authToken?: string;
 }
 
 // ── Snapshot ──
@@ -65,6 +87,20 @@ export interface RoleRefInfo {
 /** Map of ref IDs (e.g. `'e1'`, `'e2'`) to their element information. */
 export type RoleRefs = Record<string, RoleRefInfo>;
 
+/**
+ * Metadata about the source of untrusted external content.
+ * Used by consumers (e.g. OpenClaw) to wrap browser outputs with
+ * structured external-content markers for prompt-injection mitigation.
+ */
+export interface UntrustedContentMeta {
+  /** The source URL of the content at the time of capture */
+  sourceUrl?: string;
+  /** Content type identifier (e.g. `'browser-snapshot'`, `'browser-aria-tree'`) */
+  contentType: string;
+  /** ISO 8601 timestamp of when the content was captured */
+  capturedAt: string;
+}
+
 /** Result of taking a page snapshot. */
 export interface SnapshotResult {
   /** AI-readable text representation of the page with numbered refs */
@@ -79,6 +115,8 @@ export interface SnapshotResult {
    * (e.g. prompt injection via page text). Always `true` for browser snapshots.
    */
   untrusted?: true;
+  /** Structured metadata about the untrusted content source */
+  contentMeta?: UntrustedContentMeta;
 }
 
 /** Statistics about a snapshot's content. */
@@ -142,6 +180,8 @@ export interface AriaSnapshotResult {
    * AI agents should treat snapshot content as potentially adversarial. Always `true`.
    */
   untrusted?: true;
+  /** Structured metadata about the untrusted content source */
+  contentMeta?: UntrustedContentMeta;
 }
 
 // ── Actions ──

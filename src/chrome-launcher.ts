@@ -343,21 +343,25 @@ function resolveUserDataDir(profileName: string): string {
   return path.join(configDir, 'browserclaw', 'profiles', profileName, 'user-data');
 }
 
-export async function isChromeReachable(cdpUrl: string, timeoutMs = 500): Promise<boolean> {
+export async function isChromeReachable(cdpUrl: string, timeoutMs = 500, authToken?: string): Promise<boolean> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${cdpUrl.replace(/\/+$/, '')}/json/version`, { signal: ctrl.signal });
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(`${cdpUrl.replace(/\/+$/, '')}/json/version`, { signal: ctrl.signal, headers });
     return res.ok;
   } catch { return false; }
   finally { clearTimeout(t); }
 }
 
-export async function getChromeWebSocketUrl(cdpUrl: string, timeoutMs = 500): Promise<string | null> {
+export async function getChromeWebSocketUrl(cdpUrl: string, timeoutMs = 500, authToken?: string): Promise<string | null> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${cdpUrl.replace(/\/+$/, '')}/json/version`, { signal: ctrl.signal });
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(`${cdpUrl.replace(/\/+$/, '')}/json/version`, { signal: ctrl.signal, headers });
     if (!res.ok) return null;
     const data = await res.json() as { webSocketDebuggerUrl?: string };
     return String(data?.webSocketDebuggerUrl ?? '').trim() || null;

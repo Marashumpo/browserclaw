@@ -1,4 +1,5 @@
 import { connectBrowser, getPageForTargetId, ensurePageState, pageTargetId, findPageByTargetId, getAllPages, normalizeTimeoutMs } from '../connection.js';
+import { isInternalUrlResolved } from '../security.js';
 import type { BrowserTab } from '../types.js';
 
 export async function navigateViaPlaywright(opts: {
@@ -6,9 +7,13 @@ export async function navigateViaPlaywright(opts: {
   targetId?: string;
   url: string;
   timeoutMs?: number;
+  allowInternal?: boolean;
 }): Promise<{ url: string }> {
   const url = String(opts.url ?? '').trim();
   if (!url) throw new Error('url is required');
+  if (!opts.allowInternal && await isInternalUrlResolved(url)) {
+    throw new Error(`Navigation to internal/loopback address blocked: "${url}". Set allowInternal: true if this is intentional.`);
+  }
   const page = await getPageForTargetId({ cdpUrl: opts.cdpUrl, targetId: opts.targetId });
   ensurePageState(page);
   await page.goto(url, { timeout: normalizeTimeoutMs(opts.timeoutMs, 20000) });
@@ -34,12 +39,16 @@ export async function listPagesViaPlaywright(opts: { cdpUrl: string }): Promise<
 export async function createPageViaPlaywright(opts: {
   cdpUrl: string;
   url?: string;
+  allowInternal?: boolean;
 }): Promise<BrowserTab> {
+  const targetUrl = (opts.url ?? '').trim() || 'about:blank';
+  if (targetUrl !== 'about:blank' && !opts.allowInternal && await isInternalUrlResolved(targetUrl)) {
+    throw new Error(`Navigation to internal/loopback address blocked: "${targetUrl}". Set allowInternal: true if this is intentional.`);
+  }
   const { browser } = await connectBrowser(opts.cdpUrl);
   const context = browser.contexts()[0] ?? await browser.newContext();
   const page = await context.newPage();
   ensurePageState(page);
-  const targetUrl = (opts.url ?? '').trim() || 'about:blank';
   if (targetUrl !== 'about:blank') {
     await page.goto(targetUrl, { timeout: normalizeTimeoutMs(undefined, 20000) });
   }

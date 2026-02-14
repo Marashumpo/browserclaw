@@ -2,9 +2,11 @@ export { BrowserClaw, CrawlPage } from './browser.js';
 export type { FrameEvalResult } from './actions/evaluate.js';
 export type {
   LaunchOptions,
+  ConnectOptions,
   SnapshotResult,
   SnapshotOptions,
   SnapshotStats,
+  UntrustedContentMeta,
   AriaSnapshotResult,
   AriaNode,
   RoleRefInfo,

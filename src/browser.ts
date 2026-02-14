@@ -16,7 +16,7 @@ import { responseBodyViaPlaywright } from './capture/response.js';
 import { getConsoleMessagesViaPlaywright, getPageErrorsViaPlaywright, getNetworkRequestsViaPlaywright } from './capture/activity.js';
 import { cookiesGetViaPlaywright, cookiesSetViaPlaywright, cookiesClearViaPlaywright, storageGetViaPlaywright, storageSetViaPlaywright, storageClearViaPlaywright } from './storage/index.js';
 import type {
-  LaunchOptions, SnapshotResult, SnapshotOptions, AriaSnapshotResult,
+  LaunchOptions, ConnectOptions, SnapshotResult, SnapshotOptions, AriaSnapshotResult,
   BrowserTab, FormField, ClickOptions, TypeOptions, WaitOptions,
   ScreenshotOptions, ConsoleMessage, PageError, NetworkRequest,
   CookieData, StorageKind, RunningChrome,
@@ -46,11 +46,13 @@ import type {
 export class CrawlPage {
   private readonly cdpUrl: string;
   private readonly targetId: string;
+  private readonly allowInternal: boolean;
 
   /** @internal */
-  constructor(cdpUrl: string, targetId: string) {
+  constructor(cdpUrl: string, targetId: string, allowInternal = false) {
     this.cdpUrl = cdpUrl;
     this.targetId = targetId;
+    this.allowInternal = allowInternal;
   }
 
   /** The CDP target ID for this page. Use this to identify the page in multi-tab scenarios. */
@@ -405,6 +407,7 @@ export class CrawlPage {
       targetId: this.targetId,
       url,
       timeoutMs: opts?.timeoutMs,
+      allowInternal: this.allowInternal,
     });
   }
 
@@ -609,12 +612,14 @@ export class CrawlPage {
    * Stop recording a trace and save it to a file.
    *
    * @param path - File path to save the trace (e.g. `'trace.zip'`)
+   * @param opts - Options (allowedOutputRoots: constrain output to specific directories)
    */
-  async traceStop(path: string): Promise<void> {
+  async traceStop(path: string, opts?: { allowedOutputRoots?: string[] }): Promise<void> {
     return traceStopViaPlaywright({
       cdpUrl: this.cdpUrl,
       targetId: this.targetId,
       path,
+      allowedOutputRoots: opts?.allowedOutputRoots,
     });
   }
 
@@ -802,13 +807,14 @@ export class CrawlPage {
    * console.log(result.suggestedFilename); // 'report.pdf'
    * ```
    */
-  async download(ref: string, path: string, opts?: { timeoutMs?: number }): Promise<DownloadResult> {
+  async download(ref: string, path: string, opts?: { timeoutMs?: number; allowedOutputRoots?: string[] }): Promise<DownloadResult> {
     return downloadViaPlaywright({
       cdpUrl: this.cdpUrl,
       targetId: this.targetId,
       ref,
       path,
       timeoutMs: opts?.timeoutMs,
+      allowedOutputRoots: opts?.allowedOutputRoots,
     });
   }
 
@@ -820,12 +826,13 @@ export class CrawlPage {
    * @param opts - Options (path: save location, timeoutMs)
    * @returns Download result with URL, suggested filename, and saved path
    */
-  async waitForDownload(opts?: { path?: string; timeoutMs?: number }): Promise<DownloadResult> {
+  async waitForDownload(opts?: { path?: string; timeoutMs?: number; allowedOutputRoots?: string[] }): Promise<DownloadResult> {
     return waitForDownloadViaPlaywright({
       cdpUrl: this.cdpUrl,
       targetId: this.targetId,
       path: opts?.path,
       timeoutMs: opts?.timeoutMs,
+      allowedOutputRoots: opts?.allowedOutputRoots,
     });
   }
 
@@ -986,11 +993,13 @@ export class CrawlPage {
  */
 export class BrowserClaw {
   private readonly cdpUrl: string;
+  private readonly allowInternal: boolean;
   private chrome: RunningChrome | null;
 
-  private constructor(cdpUrl: string, chrome: RunningChrome | null) {
+  private constructor(cdpUrl: string, chrome: RunningChrome | null, allowInternal = false) {
     this.cdpUrl = cdpUrl;
     this.chrome = chrome;
+    this.allowInternal = allowInternal;
   }
 
   /**
@@ -1019,7 +1028,7 @@ export class BrowserClaw {
   static async launch(opts: LaunchOptions = {}): Promise<BrowserClaw> {
     const chrome = await launchChrome(opts);
     const cdpUrl = `http://127.0.0.1:${chrome.cdpPort}`;
-    return new BrowserClaw(cdpUrl, chrome);
+    return new BrowserClaw(cdpUrl, chrome, opts.allowInternal);
   }
 
   /**
@@ -1036,12 +1045,12 @@ export class BrowserClaw {
    * const browser = await BrowserClaw.connect('http://localhost:9222');
    * ```
    */
-  static async connect(cdpUrl: string): Promise<BrowserClaw> {
-    if (!await isChromeReachable(cdpUrl, 3000)) {
+  static async connect(cdpUrl: string, opts?: ConnectOptions): Promise<BrowserClaw> {
+    if (!await isChromeReachable(cdpUrl, 3000, opts?.authToken)) {
       throw new Error(`Cannot connect to Chrome at ${cdpUrl}. Is Chrome running with --remote-debugging-port?`);
     }
-    await connectBrowser(cdpUrl);
-    return new BrowserClaw(cdpUrl, null);
+    await connectBrowser(cdpUrl, opts?.authToken);
+    return new BrowserClaw(cdpUrl, null, opts?.allowInternal);
   }
 
   /**
@@ -1057,8 +1066,8 @@ export class BrowserClaw {
    * ```
    */
   async open(url: string): Promise<CrawlPage> {
-    const tab = await createPageViaPlaywright({ cdpUrl: this.cdpUrl, url });
-    return new CrawlPage(this.cdpUrl, tab.targetId);
+    const tab = await createPageViaPlaywright({ cdpUrl: this.cdpUrl, url, allowInternal: this.allowInternal });
+    return new CrawlPage(this.cdpUrl, tab.targetId, this.allowInternal);
   }
 
   /**
@@ -1072,7 +1081,7 @@ export class BrowserClaw {
     if (!pages.length) throw new Error('No pages available. Use browser.open(url) to create a tab.');
     const tid = await pageTargetId(pages[0]!).catch(() => null);
     if (!tid) throw new Error('Failed to get targetId for the current page.');
-    return new CrawlPage(this.cdpUrl, tid);
+    return new CrawlPage(this.cdpUrl, tid, this.allowInternal);
   }
 
   /**
@@ -1111,7 +1120,7 @@ export class BrowserClaw {
    * @returns CrawlPage for the specified tab
    */
   page(targetId: string): CrawlPage {
-    return new CrawlPage(this.cdpUrl, targetId);
+    return new CrawlPage(this.cdpUrl, targetId, this.allowInternal);
   }
 
   /** The CDP endpoint URL for this browser connection. */
