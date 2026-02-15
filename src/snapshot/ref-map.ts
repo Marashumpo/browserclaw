@@ -22,6 +22,38 @@ function getIndentLevel(line: string): number {
   return match ? Math.floor(match[1]!.length / 2) : 0;
 }
 
+interface ParsedSnapshotLine {
+  roleRaw: string;
+  role: string;
+  name?: string;
+  suffix: string;
+}
+
+function matchInteractiveSnapshotLine(
+  line: string,
+  options: SnapshotBuildOptions,
+): ParsedSnapshotLine | null {
+  const depth = getIndentLevel(line);
+  if (options.maxDepth !== undefined && depth > options.maxDepth) {
+    return null;
+  }
+  const match = line.match(/^(\s*-\s*)(\w+)(?:\s+"([^"]*)")?(.*)$/);
+  if (!match) {
+    return null;
+  }
+  const [, , roleRaw, name, suffix] = match;
+  if (roleRaw!.startsWith('/')) {
+    return null;
+  }
+  const role = roleRaw!.toLowerCase();
+  return {
+    roleRaw: roleRaw!,
+    role,
+    ...(name ? { name } : {}),
+    suffix: suffix!,
+  };
+}
+
 function createRoleNameTracker() {
   const counts = new Map<string, number>();
   const refsByKey = new Map<string, string[]>();
@@ -101,14 +133,11 @@ export function buildRoleSnapshotFromAriaSnapshot(
   if (options.interactive) {
     const result: string[] = [];
     for (const line of lines) {
-      const depth = getIndentLevel(line);
-      if (options.maxDepth !== undefined && depth > options.maxDepth) continue;
-      const match = line.match(/^(\s*-\s*)(\w+)(?:\s+"([^"]*)")?(.*)$/);
-      if (!match) continue;
-      const [, prefix, roleRaw, name, suffix] = match;
-      if (roleRaw!.startsWith('/')) continue;
-      const role = roleRaw!.toLowerCase();
+      const parsed = matchInteractiveSnapshotLine(line, options);
+      if (!parsed) continue;
+      const { roleRaw, role, name, suffix } = parsed;
       if (!INTERACTIVE_ROLES.has(role)) continue;
+      const prefix = line.match(/^(\s*-\s*)/)?.[1] ?? '';
       const ref = nextRef();
       const nth = tracker.getNextIndex(role, name);
       tracker.trackRef(role, name, ref);
@@ -117,7 +146,7 @@ export function buildRoleSnapshotFromAriaSnapshot(
       if (name) enhanced += ` "${name}"`;
       enhanced += ` [ref=${ref}]`;
       if (nth > 0) enhanced += ` [nth=${nth}]`;
-      if (suffix!.includes('[')) enhanced += suffix;
+      if (suffix.includes('[')) enhanced += suffix;
       result.push(enhanced);
     }
     removeNthFromNonDuplicates(refs, tracker);
@@ -175,16 +204,13 @@ export function buildRoleSnapshotFromAiSnapshot(
   if (options.interactive) {
     const out: string[] = [];
     for (const line of lines) {
-      const depth = getIndentLevel(line);
-      if (options.maxDepth !== undefined && depth > options.maxDepth) continue;
-      const match = line.match(/^(\s*-\s*)(\w+)(?:\s+"([^"]*)")?(.*)$/);
-      if (!match) continue;
-      const [, prefix, roleRaw, name, suffix] = match;
-      if (roleRaw!.startsWith('/')) continue;
-      const role = roleRaw!.toLowerCase();
+      const parsed = matchInteractiveSnapshotLine(line, options);
+      if (!parsed) continue;
+      const { roleRaw, role, name, suffix } = parsed;
       if (!INTERACTIVE_ROLES.has(role)) continue;
-      const ref = parseAiSnapshotRef(suffix!);
+      const ref = parseAiSnapshotRef(suffix);
       if (!ref) continue;
+      const prefix = line.match(/^(\s*-\s*)/)?.[1] ?? '';
       refs[ref] = { role, ...(name ? { name } : {}) };
       out.push(`${prefix}${roleRaw}${name ? ` "${name}"` : ''}${suffix}`);
     }
