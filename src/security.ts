@@ -138,9 +138,45 @@ function extractEmbeddedIPv4(lower: string): string | null {
 }
 
 /**
+ * Validate a single IPv4 octet string: must be a plain decimal integer 0-255
+ * with no leading zeros, hex prefixes, or other non-standard forms.
+ * Returns false for any octet that doesn't round-trip cleanly.
+ */
+function isStrictDecimalOctet(part: string): boolean {
+  if (!/^[0-9]+$/.test(part)) return false;
+  const n = parseInt(part, 10);
+  if (n < 0 || n > 255) return false;
+  // Reject leading zeros (e.g. "0177" would be octal in some parsers)
+  if (String(n) !== part) return false;
+  return true;
+}
+
+/**
+ * Returns true if the string looks like a legacy/non-standard IPv4 literal
+ * that should be treated as internal and blocked (fail closed).
+ * Catches octal (0177.0.0.1), hex (0xff.0.0.1), short (127.1),
+ * and packed decimal (2130706433) forms.
+ */
+function isUnsupportedIPv4Literal(ip: string): boolean {
+  // Packed decimal: single integer with no dots
+  if (/^[0-9]+$/.test(ip)) return true;
+
+  const parts = ip.split('.');
+  // Must be exactly 4 dotted parts
+  if (parts.length !== 4) return true;
+  // Each part must be a strict decimal octet
+  if (!parts.every(isStrictDecimalOctet)) return true;
+
+  return false;
+}
+
+/**
  * Check whether an IP address string is internal/private/loopback.
  */
 function isInternalIP(ip: string): boolean {
+  // Reject non-standard IPv4 literals before any range checks (fail closed)
+  if (!ip.includes(':') && isUnsupportedIPv4Literal(ip)) return true;
+
   // IPv4
   if (/^127\./.test(ip)) return true;
   if (/^10\./.test(ip)) return true;
