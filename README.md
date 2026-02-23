@@ -41,29 +41,34 @@ The snapshot + ref pattern means:
 
 The AI browser automation space is moving fast. Here's how browserclaw compares to the major alternatives.
 
-| | [browserclaw](https://github.com/idan-rubin/browserclaw) | [browser-use](https://github.com/browser-use/browser-use) | [Stagehand](https://github.com/browserbase/stagehand) | [Skyvern](https://github.com/Skyvern-AI/skyvern) | [Playwright MCP](https://github.com/microsoft/playwright-mcp) |
-|:---|:---:|:---:|:---:|:---:|:---:|
-| Ref → exact element, no guessing | :white_check_mark: | :heavy_minus_sign: | :x: | :x: | :white_check_mark: |
-| No vision model in the loop | :white_check_mark: | :heavy_minus_sign: | :white_check_mark: | :x: | :white_check_mark: |
-| Survives redesigns (semantic, not pixel) | :white_check_mark: | :heavy_minus_sign: | :white_check_mark: | :x: | :white_check_mark: |
-| Fill 10 form fields in one call | :white_check_mark: | :x: | :x: | :x: | :x: |
-| Interact with cross-origin iframes | :white_check_mark: | :white_check_mark: | :x: | :x: | :x: |
-| Playwright engine (auto-wait, locators) | :white_check_mark: | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Embeddable in your own agent loop | :white_check_mark: | :x: | :heavy_minus_sign: | :x: | :x: |
+| | [browserclaw](https://github.com/idan-rubin/browserclaw) | [browser-use](https://github.com/browser-use/browser-use) | [Stagehand](https://github.com/browserbase/stagehand) | [Playwright MCP](https://github.com/microsoft/playwright-mcp) |
+|:---|:---:|:---:|:---:|:---:|
+| Ref → exact element, no guessing | :white_check_mark: | :heavy_minus_sign: | :x: | :white_check_mark: |
+| No vision model in the loop | :white_check_mark: | :heavy_minus_sign: | :white_check_mark: | :white_check_mark: |
+| Survives redesigns (semantic, not pixel) | :white_check_mark: | :heavy_minus_sign: | :white_check_mark: | :white_check_mark: |
+| Fill 10 form fields in one call | :white_check_mark: | :x: | :x: | :x: |
+| Interact with cross-origin iframes | :white_check_mark: | :white_check_mark: | :x: | :x: |
+| Playwright engine (auto-wait, locators) | :white_check_mark: | :x: | :white_check_mark: | :white_check_mark: |
+| Embeddable in your own JS/TS agent loop | :white_check_mark: | :x: | :heavy_minus_sign: | :x: |
 
 :white_check_mark: = Yes&ensp; :heavy_minus_sign: = Partial&ensp; :x: = No
 
 **browserclaw is the only tool that checks every box.** It combines the precision of accessibility snapshots with Playwright's battle-tested engine, batch operations, cross-origin iframe access, and zero framework lock-in — in a single embeddable library.
 
+### The key distinction: browser tool vs. AI agent
+
+Most tools in this space are **AI agents that happen to control a browser**. They own the intelligence layer: they take a task, call an LLM, decide what actions to take, and execute them. That's a complete agent.
+
+browserclaw is different. It's a **browser tool** — just the eyes and hands. It takes a snapshot and returns refs. It executes actions on refs. The LLM, the reasoning, the task planning — that all lives in your code, in your agent, wherever you want it. browserclaw doesn't have opinions about any of that.
+
+This distinction matters if you're building an agent platform, a product with its own AI layer, or anything where you need to control the intelligence loop. You can't compose an agent-first tool into a system that already has an agent. You end up with two brains fighting over who's in charge.
+
 ### How each tool works under the hood
 
-- **browserclaw** — Accessibility snapshot with numbered refs → Playwright locator (`aria-ref` in default mode, `getByRole()` in role mode). One ref, one element. No vision model, no LLM in the targeting loop.
-- **browser-use** — DOM element indexing via raw CDP + optional screenshots. [Dropped Playwright](https://browser-use.com/posts/playwright-to-cdp) to go "closer to the metal" — fast, but now reinvents auto-wait, retry logic, and cross-browser support from scratch.
+- **browserclaw** — Accessibility snapshot with numbered refs → Playwright locator (`aria-ref` in default mode, `getByRole()` in role mode). One ref, one element. No vision model, no LLM in the targeting loop. You bring the brain.
+- **browser-use** — A complete AI agent: takes a task, calls an LLM, decides actions, executes them. The LLM loop is inside the library. Great for standalone automation scripts; incompatible with platforms that already own the agent loop. Python-only.
 - **Stagehand** — Accessibility tree + natural language primitives (`page.act("click login")`). Convenient, but the LLM re-interprets which element to target on every single call — non-deterministic by design.
-- **Skyvern** — Vision-first. Screenshots sent to a Vision LLM that guesses coordinates. Multi-agent architecture (Planner/Actor/Validator) adds self-correction, but at significant cost and latency.
 - **Playwright MCP** — Same snapshot philosophy as browserclaw, but locked to the MCP protocol. Great for chat-based agents, but not embeddable as a library — you can't compose it into your own agent loop or call it from application code.
-
-**Also in the space:** [LaVague](https://github.com/lavague-ai/LaVague) (generates Selenium code via RAG on HTML), [AgentQL](https://github.com/tinyfish-io/agentql) (semantic query language for the DOM), [Vercel agent-browser](https://github.com/vercel-labs/agent-browser) (element refs like `@e1` — a similar ref-based approach).
 
 ### Why this matters for repeated complex UI tasks
 
