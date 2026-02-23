@@ -26,6 +26,10 @@ export function withBrowserNavigationPolicy(ssrfPolicy?: SsrfPolicy): BrowserNav
   return { ssrfPolicy };
 }
 
+// Only http: and https: are permitted for navigation; about:blank is the sole non-network exception.
+const NETWORK_NAVIGATION_PROTOCOLS = new Set(['http:', 'https:']);
+const SAFE_NON_NETWORK_URLS = new Set(['about:blank']);
+
 /**
  * Assert that a URL is allowed for browser navigation under the given SSRF policy.
  * Throws `InvalidBrowserNavigationUrlError` if the URL is blocked.
@@ -34,6 +38,21 @@ export async function assertBrowserNavigationAllowed(opts: {
   url: string;
   lookupFn?: LookupFn;
 } & BrowserNavigationPolicyOptions): Promise<void> {
+  const rawUrl = String(opts.url ?? '').trim();
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new InvalidBrowserNavigationUrlError(`Invalid URL: "${rawUrl}"`);
+  }
+
+  // Block non-network protocols (file:, data:, javascript:, etc.) — only http/https allowed.
+  if (!NETWORK_NAVIGATION_PROTOCOLS.has(parsed.protocol)) {
+    if (SAFE_NON_NETWORK_URLS.has(parsed.href)) return;
+    throw new InvalidBrowserNavigationUrlError(`Navigation blocked: unsupported protocol "${parsed.protocol}"`);
+  }
+
   const policy = opts.ssrfPolicy;
 
   if (policy?.allowPrivateNetwork) return;
@@ -44,17 +63,13 @@ export async function assertBrowserNavigationAllowed(opts: {
   ];
 
   if (allowedHostnames.length) {
-    let parsed: URL;
-    try { parsed = new URL(opts.url); } catch {
-      throw new InvalidBrowserNavigationUrlError(`Invalid URL: "${opts.url}"`);
-    }
     const hostname = parsed.hostname.toLowerCase();
     if (allowedHostnames.some(h => h.toLowerCase() === hostname)) return;
   }
 
-  if (await isInternalUrlResolved(opts.url, opts.lookupFn)) {
+  if (await isInternalUrlResolved(rawUrl, opts.lookupFn)) {
     throw new InvalidBrowserNavigationUrlError(
-      `Navigation to internal/loopback address blocked: "${opts.url}". Use ssrfPolicy: { allowPrivateNetwork: true } if this is intentional.`
+      `Navigation to internal/loopback address blocked: "${rawUrl}". Use ssrfPolicy: { allowPrivateNetwork: true } if this is intentional.`
     );
   }
 }
